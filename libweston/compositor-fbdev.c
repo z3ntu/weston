@@ -159,7 +159,8 @@ finish_frame_handler(void *data)
 
 static pixman_format_code_t
 calculate_pixman_format(struct fb_var_screeninfo *vinfo,
-                        struct fb_fix_screeninfo *finfo)
+                        struct fb_fix_screeninfo *finfo,
+                        int pixman_type)
 {
 	/* Calculate the pixman format supported by the frame buffer from the
 	 * buffer's metadata. Return 0 if no known pixman format is supported
@@ -180,7 +181,8 @@ calculate_pixman_format(struct fb_var_screeninfo *vinfo,
 	           STAMP_SPACE " - red: offset: %i, length: %i, MSB: %i\n"
 	           STAMP_SPACE " - green: offset: %i, length: %i, MSB: %i\n"
 	           STAMP_SPACE " - blue: offset: %i, length: %i, MSB: %i\n"
-	           STAMP_SPACE " - transp: offset: %i, length: %i, MSB: %i\n",
+	           STAMP_SPACE " - transp: offset: %i, length: %i, MSB: %i\n"
+	           STAMP_SPACE " - pixman_type: %i\n",
 	           finfo->type, finfo->type_aux, finfo->visual,
 	           vinfo->bits_per_pixel, vinfo->grayscale,
 	           vinfo->red.offset, vinfo->red.length, vinfo->red.msb_right,
@@ -189,7 +191,8 @@ calculate_pixman_format(struct fb_var_screeninfo *vinfo,
 	           vinfo->blue.offset, vinfo->blue.length,
 	           vinfo->blue.msb_right,
 	           vinfo->transp.offset, vinfo->transp.length,
-	           vinfo->transp.msb_right);
+	           vinfo->transp.msb_right,
+	           pixman_type);
 
 	/* We only handle packed formats at the moment. */
 	if (finfo->type != FB_TYPE_PACKED_PIXELS)
@@ -211,6 +214,15 @@ calculate_pixman_format(struct fb_var_screeninfo *vinfo,
 	    vinfo->blue.msb_right != 0)
 		return 0;
 
+	/* Use pixman type specified by parameter */
+	if (pixman_type != PIXMAN_TYPE_OTHER) {
+		return PIXMAN_FORMAT(vinfo->bits_per_pixel, pixman_type,
+				     vinfo->transp.length,
+			             vinfo->red.length,
+ 			             vinfo->green.length,
+			             vinfo->blue.length);
+	}
+	
 	/* Work out the format type from the offsets. We only support RGBA and
 	 * ARGB at the moment. */
 	type = PIXMAN_TYPE_OTHER;
@@ -285,7 +297,7 @@ fbdev_query_screen_info(struct fbdev_output *output, int fd,
 	strncpy(info->id, fixinfo.id, sizeof(info->id));
 	info->id[sizeof(info->id)-1] = '\0';
 
-	info->pixel_format = calculate_pixman_format(&varinfo, &fixinfo);
+	info->pixel_format = calculate_pixman_format(&varinfo, &fixinfo, output->base.pixman_type);
 	info->refresh_rate = calculate_refresh_rate(&varinfo);
 
 	if (info->pixel_format == 0) {
@@ -495,6 +507,7 @@ fbdev_output_create(struct fbdev_backend *backend,
 		goto out_free;
 	}
 
+	output->base.pixman_type = backend->base.pixman_type;
 	output->base.name = strdup("fbdev");
 	output->base.destroy = fbdev_output_destroy;
 	output->base.disable = NULL;
@@ -742,6 +755,7 @@ fbdev_backend_create(struct weston_compositor *compositor,
 		goto out_udev;
 	}
 
+	backend->base.pixman_type = param->pixman_type;
 	backend->base.destroy = fbdev_backend_destroy;
 	backend->base.restore = fbdev_restore;
 
@@ -781,6 +795,7 @@ config_init_to_defaults(struct weston_fbdev_backend_config *config)
 	 * udev, rather than passing a device node in as a parameter. */
 	config->tty = 0; /* default to current tty */
 	config->device = "/dev/fb0"; /* default frame buffer */
+	config->pixman_type = PIXMAN_TYPE_RGBA; /* default pixman type */
 }
 
 WL_EXPORT int

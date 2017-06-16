@@ -43,6 +43,7 @@ struct weston_fbdev_backend_config {
 
 	int tty;
 	char *device;
+	int pixman_type;
 
 	/** Callback used to configure input devices.
 	 *
