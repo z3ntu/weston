@@ -268,6 +268,7 @@ struct weston_output {
 
 	bool enabled; /**< is in the output_list, not pending list */
 	int scale;
+	int pixman_type;
 
 	int (*enable)(struct weston_output *output);
 	int (*disable)(struct weston_output *output);
@@ -872,6 +873,8 @@ struct weston_backend_config {
 };
 
 struct weston_backend {
+	int pixman_type;
+
 	void (*destroy)(struct weston_compositor *compositor);
 
 	/** Begin a repaint sequence
