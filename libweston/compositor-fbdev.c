@@ -241,6 +241,8 @@ calculate_pixman_format(struct fb_var_screeninfo *vinfo,
 	         vinfo->green.offset >= vinfo->red.offset)
 		type = PIXMAN_TYPE_ABGR;
 
+	weston_log("Type guessed: %i:\n", type);
+
 	if (type == PIXMAN_TYPE_OTHER)
 		return 0;
 
