@@ -185,10 +185,10 @@ rdp_peer_refresh_rfx(pixman_region32_t *damage, pixman_image_t *image, freerdp_p
 	cmd->destTop = damage->extents.y1;
 	cmd->destRight = damage->extents.x2;
 	cmd->destBottom = damage->extents.y2;
-	cmd->bpp = 32;
-	cmd->codecID = peer->settings->RemoteFxCodecId;
-	cmd->width = width;
-	cmd->height = height;
+	cmd->bmp.bpp = 32;
+	cmd->bmp.codecID = peer->settings->RemoteFxCodecId;
+	cmd->bmp.width = width;
+	cmd->bmp.height = height;
 
 	ptr = pixman_image_get_data(image) + damage->extents.x1 +
 				damage->extents.y1 * (pixman_image_get_stride(image) / sizeof(uint32_t));
@@ -211,8 +211,8 @@ rdp_peer_refresh_rfx(pixman_region32_t *damage, pixman_image_t *image, freerdp_p
 			pixman_image_get_stride(image)
 	);
 
-	cmd->bitmapDataLength = Stream_GetPosition(context->encode_stream);
-	cmd->bitmapData = Stream_Buffer(context->encode_stream);
+	cmd->bmp.bitmapDataLength = Stream_GetPosition(context->encode_stream);
+	cmd->bmp.bitmapData = Stream_Buffer(context->encode_stream);
 
 	update->SurfaceBits(update->context, cmd);
 }
@@ -242,19 +242,19 @@ rdp_peer_refresh_nsc(pixman_region32_t *damage, pixman_image_t *image, freerdp_p
 	cmd->destTop = damage->extents.y1;
 	cmd->destRight = damage->extents.x2;
 	cmd->destBottom = damage->extents.y2;
-	cmd->bpp = 32;
-	cmd->codecID = peer->settings->NSCodecId;
-	cmd->width = width;
-	cmd->height = height;
+	cmd->bmp.bpp = 32;
+	cmd->bmp.codecID = peer->settings->NSCodecId;
+	cmd->bmp.width = width;
+	cmd->bmp.height = height;
 
 	ptr = pixman_image_get_data(image) + damage->extents.x1 +
 				damage->extents.y1 * (pixman_image_get_stride(image) / sizeof(uint32_t));
 
 	nsc_compose_message(context->nsc_context, context->encode_stream, (BYTE *)ptr,
-			cmd->width,	cmd->height,
+			cmd->bmp.width,	cmd->bmp.height,
 			pixman_image_get_stride(image));
-	cmd->bitmapDataLength = Stream_GetPosition(context->encode_stream);
-	cmd->bitmapData = Stream_Buffer(context->encode_stream);
+	cmd->bmp.bitmapDataLength = Stream_GetPosition(context->encode_stream);
+	cmd->bmp.bitmapData = Stream_Buffer(context->encode_stream);
 	update->SurfaceBits(update->context, cmd);
 }
 
@@ -291,16 +291,16 @@ rdp_peer_refresh_raw(pixman_region32_t *region, pixman_image_t *image, freerdp_p
 	update->SurfaceFrameMarker(peer->context, marker);
 
 	memset(cmd, 0, sizeof(*cmd));
-	cmd->bpp = 32;
-	cmd->codecID = 0;
+	cmd->bmp.bpp = 32;
+	cmd->bmp.codecID = 0;
 
 	for (i = 0; i < nrects; i++, rect++) {
 		/*weston_log("rect(%d,%d, %d,%d)\n", rect->x1, rect->y1, rect->x2, rect->y2);*/
 		cmd->destLeft = rect->x1;
 		cmd->destRight = rect->x2;
-		cmd->width = rect->x2 - rect->x1;
+		cmd->bmp.width = rect->x2 - rect->x1;
 
-		heightIncrement = peer->settings->MultifragMaxRequestSize / (16 + cmd->width * 4);
+		heightIncrement = peer->settings->MultifragMaxRequestSize / (16 + cmd->bmp.width * 4);
 		remainingHeight = rect->y2 - rect->y1;
 		top = rect->y1;
 
@@ -308,21 +308,21 @@ rdp_peer_refresh_raw(pixman_region32_t *region, pixman_image_t *image, freerdp_p
 		subrect.x2 = rect->x2;
 
 		while (remainingHeight) {
-			   cmd->height = (remainingHeight > heightIncrement) ? heightIncrement : remainingHeight;
+			   cmd->bmp.height = (remainingHeight > heightIncrement) ? heightIncrement : remainingHeight;
 			   cmd->destTop = top;
-			   cmd->destBottom = top + cmd->height;
-			   cmd->bitmapDataLength = cmd->width * cmd->height * 4;
-			   cmd->bitmapData = (BYTE *)realloc(cmd->bitmapData, cmd->bitmapDataLength);
+			   cmd->destBottom = top + cmd->bmp.height;
+			   cmd->bmp.bitmapDataLength = cmd->bmp.width * cmd->bmp.height * 4;
+			   cmd->bmp.bitmapData = (BYTE *)realloc(cmd->bmp.bitmapData, cmd->bmp.bitmapDataLength);
 
 			   subrect.y1 = top;
-			   subrect.y2 = top + cmd->height;
-			   pixman_image_flipped_subrect(&subrect, image, cmd->bitmapData);
+			   subrect.y2 = top + cmd->bmp.height;
+			   pixman_image_flipped_subrect(&subrect, image, cmd->bmp.bitmapData);
 
 			   /*weston_log("*  sending (%d,%d, %d,%d)\n", subrect.x1, subrect.y1, subrect.x2, subrect.y2); */
 			   update->SurfaceBits(peer->context, cmd);
 
-			   remainingHeight -= cmd->height;
-			   top += cmd->height;
+			   remainingHeight -= cmd->bmp.height;
+			   top += cmd->bmp.height;
 		}
 	}
 
